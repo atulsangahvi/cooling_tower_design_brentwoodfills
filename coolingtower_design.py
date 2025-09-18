@@ -9,6 +9,8 @@ from io import BytesIO
 from dataclasses import dataclass
 
 import streamlit as st
+import pandas as pd
+import numpy as np
 
 # -------------------------------
 # Utilities
@@ -787,6 +789,259 @@ if fan_enabled:
     if 'fan_summary' not in st.session_state:
         st.session_state['fan_summary'] = None
     st.session_state['fan_summary'] = fan_summary
+
+# -------------------------------
+# Data ingest & curve fitting (fills & fans)
+# -------------------------------
+
+st.markdown("## 🧩 Data ingest & curve fitting")
+with st.expander("Fill ∆P curve fitter (from CSV / Excel / PDF)", expanded=False):
+    up = st.file_uploader("Upload vendor table for fill (velocity vs ∆P, plus depth)", type=["csv","xlsx","xls","pdf"], key="fill_upl")
+    if up is not None:
+        df = None
+        ext = up.name.lower().split(".")[-1]
+        try:
+            if ext in ["csv"]:
+                df = pd.read_csv(up)
+            elif ext in ["xlsx","xls"]:
+                df = pd.read_excel(up)
+            elif ext == "pdf":
+                try:
+                    import pdfplumber
+                    tables = []
+                    with pdfplumber.open(up) as pdf:
+                        for pg in pdf.pages:
+                            for t in pg.extract_tables() or []:
+                                tables.append(pd.DataFrame(t))
+                    if tables:
+                        idx = st.number_input("Select table index from PDF", 0, max(0, len(tables)-1), 0)
+                        df = tables[int(idx)]
+                        df.columns = [str(c).strip() for c in df.iloc[0]]
+                        df = df.drop(df.index[0]).reset_index(drop=True)
+                    else:
+                        st.error("No tables detected in PDF. Please export the table to CSV/Excel and re-upload.")
+                except Exception as e:
+                    st.info(f"PDF parsing requires 'pdfplumber'. Add it to requirements.txt. Error: {e}")
+        except Exception as e:
+            st.error(f"Could not read file: {e}")
+
+        if isinstance(df, pd.DataFrame):
+            st.write("Preview:")
+            st.dataframe(df.head(20))
+
+            # Column mapping UI
+            cols = list(df.columns)
+            col_v = st.selectbox("Velocity column (m/s)", cols)
+            col_dp = st.selectbox("Pressure drop column (Pa)", cols)
+            depth_mode = st.radio("Depth source", ["constant", "column"], horizontal=True)
+            depth_m_const = st.number_input("Depth (m) if constant", 0.05, 2.5, 0.6, 0.05)
+            col_depth = None
+            if depth_mode == "column":
+                col_depth = st.selectbox("Depth column (m)", cols)
+            v_ref = st.number_input("Reference face velocity v_ref (m/s)", 1.0, 4.0, 2.2, 0.1)
+
+            # Clean and compute
+            def to_float(s):
+                try:
+                    return float(str(s).replace(",",""))
+                except:
+                    return None
+            v = df[col_v].map(to_float).astype(float)
+            dp = df[col_dp].map(to_float).astype(float)
+            if depth_mode == "column":
+                depth = df[col_depth].map(to_float).astype(float)
+            else:
+                depth = pd.Series(depth_m_const, index=df.index)
+
+            mask = v.notna() & dp.notna() & depth.notna() & (v>0) & (dp>0) & (depth>0)
+            vv = v[mask].values.astype(float)
+            dd = dp[mask].values.astype(float)
+            hh = depth[mask].values.astype(float)
+
+            if len(vv) >= 3:
+                # Fit dp/depth = k * (v/v_ref)^2  (least squares)
+                x = (vv / v_ref) ** 2
+                y = (dd / hh)
+                k = float(np.dot(x, y) / max(np.dot(x, x), 1e-12))
+                dp_k0_fit = k  # Pa/m at v_ref
+                # Simple quality metric
+                y_pred = k * x
+                rmse = float(np.sqrt(np.mean((y - y_pred) ** 2)))
+
+                st.success(f"Fitted dp_k0 ≈ {dp_k0_fit:.1f} Pa/m at v_ref={v_ref:.2f} m/s (RMSE: {rmse:.1f} Pa/m)")
+
+                # Build JSON snippet
+                vendor = st.text_input("Vendor", "Vendor")
+                name = st.text_input("Fill model name (library key)", "My Fill Model")
+                flow_sel = st.selectbox("Flow arrangement", ["crossflow", "counterflow"], index=0)
+                geom = st.selectbox("Geometry", ["film","splash","hybrid"], index=0)
+                fa = st.number_input("Free-area fraction (0.6–0.98)", 0.6, 0.98, 0.90, 0.01)
+                vmin = st.number_input("Recommended air v_min (m/s)", 0.5, 5.0, float(max(1.0, np.percentile(vv, 10))), 0.1)
+                vmax = st.number_input("Recommended air v_max (m/s)", float(vmin+0.1), 6.0, float(max(vmin+0.5, np.percentile(vv, 90))), 0.1)
+                wlmin = st.number_input("Recommended water loading min (m³/h·m²)", 1.0, 40.0, 6.0, 0.5)
+                wlmax = st.number_input("Recommended water loading max (m³/h·m²)", float(wlmin+1.0), 50.0, 20.0, 0.5)
+                depth_def = st.number_input("Default fill depth (m)", 0.2, 2.0, float(np.median(hh)), 0.05)
+
+                snippet = {
+                    name: {
+                        "vendor": vendor,
+                        "geometry": geom,
+                        "flow": flow_sel,
+                        "rec_air_velocity_m_s_min": float(vmin),
+                        "rec_air_velocity_m_s_max": float(vmax),
+                        "rec_water_loading_m3_h_m2_min": float(wlmin),
+                        "rec_water_loading_m3_h_m2_max": float(wlmax),
+                        "free_area_frac": float(fa),
+                        "depth_m_default": float(depth_def),
+                        "dp_k0_Pa_per_m_at_vr": float(dp_k0_fit),
+                        "dp_vr_m_s": float(v_ref),
+                    }
+                }
+                st.write("**JSON entry to paste into fill library:**")
+                st.code(json.dumps(snippet, indent=2))
+                st.download_button(
+                    "Download fill JSON snippet",
+                    data=json.dumps(snippet, indent=2).encode("utf-8"),
+                    file_name=f"fill_{name.replace(' ','_')}.json",
+                    mime="application/json",
+                )
+            else:
+                st.warning("Need at least 3 valid rows with velocity, ∆P, and depth.")
+
+with st.expander("Fan curve fitter (from CSV / Excel / PDF)", expanded=False):
+    upf = st.file_uploader("Upload fan table (Q–∆P–Power at known D, RPM, density, angle)", type=["csv","xlsx","xls","pdf"], key="fan_upl")
+    if upf is not None:
+        df = None
+        ext = upf.name.lower().split(".")[-1]
+        try:
+            if ext == "csv":
+                df = pd.read_csv(upf)
+            elif ext in ["xlsx","xls"]:
+                df = pd.read_excel(upf)
+            elif ext == "pdf":
+                try:
+                    import pdfplumber
+                    tables = []
+                    with pdfplumber.open(upf) as pdf:
+                        for pg in pdf.pages:
+                            for t in pg.extract_tables() or []:
+                                tables.append(pd.DataFrame(t))
+                    if tables:
+                        idx = st.number_input("Select table index from PDF", 0, max(0, len(tables)-1), 0)
+                        df = tables[int(idx)]
+                        df.columns = [str(c).strip() for c in df.iloc[0]]
+                        df = df.drop(df.index[0]).reset_index(drop=True)
+                    else:
+                        st.error("No tables detected in PDF. Please export the table to CSV/Excel and re-upload.")
+                except Exception as e:
+                    st.info(f"PDF parsing requires 'pdfplumber'. Add it to requirements.txt. Error: {e}")
+        except Exception as e:
+            st.error(f"Could not read file: {e}")
+
+        if isinstance(df, pd.DataFrame):
+            st.write("Preview:")
+            st.dataframe(df.head(20))
+            cols = list(df.columns)
+            col_Q = st.selectbox("Flow column (m³/s)", cols)
+            col_DP = st.selectbox("∆P column (Pa)", cols)
+            col_P = st.selectbox("Power column (kW)", [c for c in cols if c != col_DP], index=0)
+
+            D_m = st.number_input("Fan diameter used in table (m)", 0.3, 8.0, 1.0, 0.01)
+            rpm = st.number_input("RPM used in table", 100, 2400, 960, 10)
+            rho_air = st.number_input("Air density used (kg/m³)", 0.8, 1.4, float(sugg.get("rho_mean", 1.2)), 0.01)
+            fan_model_name = st.text_input("Fan model name (library key)", "My Axial Fan")
+            angle_deg = st.text_input("Blade angle label (deg or code)", "30")
+
+            def to_float(s):
+                try:
+                    return float(str(s).replace(",",""))
+                except:
+                    return None
+            Q = df[col_Q].map(to_float).astype(float)
+            DP = df[col_DP].map(to_float).astype(float)
+            PkW = df[col_P].map(to_float).astype(float)
+            mask = Q.notna() & DP.notna() & PkW.notna() & (Q>0) & (DP>0) & (PkW>0)
+            Qv = Q[mask].values.astype(float)
+            DPv = DP[mask].values.astype(float)
+            Pw = (PkW[mask].values.astype(float))
+
+            if len(Qv) >= 4:
+                n = rpm/60.0
+                q_rel = Qv / (n * (D_m ** 3))
+                p_rel = DPv / (rho_air * (n * D_m) ** 2)
+                w_rel = (Pw*1000.0) / (rho_air * (n ** 3) * (D_m ** 5))
+
+                # Fit p_rel ≈ p0*(1-(q/qmax)^2). Grid search for robustness.
+                qmax_grid = np.linspace(max(q_rel)*1.02, max(q_rel)*1.8, 40)
+                p0_grid = np.linspace(max(p_rel)*0.9, max(p_rel)*1.6, 40)
+                best = None
+                for qmax in qmax_grid:
+                    x = (q_rel/qmax)**2
+                    # Linear least squares for p0 given qmax: p_rel ≈ p0*(1-x)
+                    A = (1 - x)
+                    p0_hat = np.dot(A, p_rel) / max(np.dot(A, A), 1e-12)
+                    # constrain within grid range to avoid silly extrapolation
+                    if p0_hat < p0_grid[0] or p0_hat > p0_grid[-1]:
+                        p0_hat = float(np.clip(p0_hat, p0_grid[0], p0_grid[-1]))
+                    pred = p0_hat * (1 - x)
+                    sse = float(np.mean((p_rel - pred)**2))
+                    if (best is None) or (sse < best[0]):
+                        best = (sse, p0_hat, qmax)
+                sse, p0_fit, qmax_fit = best
+
+                # Fit w_rel ≈ w0 + w2*(q/qmax)^2
+                x2 = (q_rel/qmax_fit)**2
+                X = np.vstack([np.ones_like(x2), x2]).T
+                beta = np.linalg.lstsq(X, w_rel, rcond=None)[0]
+                w0_fit, w2_fit = float(beta[0]), float(beta[1])
+
+                st.success(f"Fitted fan: p0={p0_fit:.3f}, q_rel_max={qmax_fit:.3f}, w0={w0_fit:.3f}, w2={w2_fit:.3f}")
+
+                # JSON snippet for fan library
+                fan_snip = {
+                    fan_model_name: {
+                        "D0_m": float(D_m),
+                        "n0_rpm": int(rpm),
+                        "rho0": float(rho_air),
+                        "angles": {
+                            str(angle_deg): {
+                                "q_rel_max": float(qmax_fit),
+                                "p0": float(p0_fit),
+                                "w0": float(w0_fit),
+                                "w2": float(w2_fit)
+                            }
+                        }
+                    }
+                }
+                st.write("**JSON entry to paste into fan library:**")
+                st.code(json.dumps(fan_snip, indent=2))
+                st.download_button(
+                    "Download fan JSON snippet",
+                    data=json.dumps(fan_snip, indent=2).encode("utf-8"),
+                    file_name=f"fan_{fan_model_name.replace(' ','_')}.json",
+                    mime="application/json",
+                )
+
+                # Quick visual check
+                try:
+                    import matplotlib.pyplot as plt
+                    Qs = np.linspace(0, max(Qv)*1.1, 80)
+                    q_rel_s = Qs/(n * D_m**3 + 1e-12)
+                    p_rel_s = p0_fit*(1 - (q_rel_s/qmax_fit)**2)
+                    DP_pred = p_rel_s * rho_air * (n * D_m)**2
+                    fig = plt.figure()
+                    plt.scatter(Qv, DPv, label="Data", s=20)
+                    plt.plot(Qs, DP_pred, label="Fit", linewidth=2)
+                    plt.xlabel("Q (m³/s)")
+                    plt.ylabel("∆P (Pa)")
+                    plt.legend()
+                    st.pyplot(fig)
+                except Exception as e:
+                    st.caption(f"Plot unavailable: {e}")
+            else:
+                st.warning("Need at least 4 valid rows with Q, ∆P, and Power.")
+
+st.caption("Fitting requires 'pandas', 'numpy', 'openpyxl' (for Excel), and optionally 'pdfplumber' (for PDFs). Add these to requirements.txt.")
 
 # -------------------------------
 # PDF Report
