@@ -6,3 +6,5 @@ scipy>=1.10.0
 coolprop>=6.4.0
 reportlab
 fpdf
+openpyxl           # Excel reader
+pdfplumber         # optional, for PDF table extraction
