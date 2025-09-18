@@ -61,21 +61,9 @@ def h_star_kJ_per_kg_da(Tw_C: float, P=P_ATM) -> float:
 # -------------------------------
 # Note: Default values are engineering placeholders. Replace with vendor data.
 DEFAULT_FILLS = {
-    "Brentwood CF1900 (crossflow film)": {
-        "vendor": "Brentwood",
-        "geometry": "film",
-        "flow": "crossflow",
-        "rec_air_velocity_m_s_min": 1.6,
-        "rec_air_velocity_m_s_max": 3.0,
-        "rec_water_loading_m3_h_m2_min": 5.0,
-        "rec_water_loading_m3_h_m2_max": 18.0,
-        "free_area_frac": 0.90,
-        "depth_m_default": 0.6,
-        # Pressure drop model: dP = k0 * (v/vr)^2 * depth_m   [Pa]
-        "dp_k0_Pa_per_m_at_vr": 110.0,
-        "dp_vr_m_s": 2.2,
-    },
-    "Brentwood OF21MA (counterflow film)": {
+    # --- Brentwood AccuPac (film fills) ---
+    # NOTE: Ranges and dp anchors are placeholders. Replace with vendor data.
+    "Brentwood CF1900 (cross-fluted, counterflow)": {
         "vendor": "Brentwood",
         "geometry": "film",
         "flow": "counterflow",
@@ -88,9 +76,22 @@ DEFAULT_FILLS = {
         "dp_k0_Pa_per_m_at_vr": 150.0,
         "dp_vr_m_s": 2.5,
     },
-    "Brentwood XF75 (crossflow splash/film hybrid)": {
+    "Brentwood OF21MA (offset-fluted, counterflow — low-fouling)": {
         "vendor": "Brentwood",
-        "geometry": "hybrid",
+        "geometry": "film",
+        "flow": "counterflow",
+        "rec_air_velocity_m_s_min": 2.0,
+        "rec_air_velocity_m_s_max": 3.2,
+        "rec_water_loading_m3_h_m2_min": 6.0,
+        "rec_water_loading_m3_h_m2_max": 18.0,
+        "free_area_frac": 0.93,
+        "depth_m_default": 0.9,
+        "dp_k0_Pa_per_m_at_vr": 140.0,
+        "dp_vr_m_s": 2.4,
+    },
+    "Brentwood XF75Pro (herringbone, crossflow)": {
+        "vendor": "Brentwood",
+        "geometry": "film",
         "flow": "crossflow",
         "rec_air_velocity_m_s_min": 1.8,
         "rec_air_velocity_m_s_max": 3.0,
@@ -99,6 +100,64 @@ DEFAULT_FILLS = {
         "free_area_frac": 0.88,
         "depth_m_default": 0.6,
         "dp_k0_Pa_per_m_at_vr": 95.0,
+        "dp_vr_m_s": 2.2,
+    },
+
+    # --- SPX Marley ---
+    "Marley MX75 (crossflow film)": {
+        "vendor": "SPX Marley",
+        "geometry": "film",
+        "flow": "crossflow",
+        "rec_air_velocity_m_s_min": 1.8,
+        "rec_air_velocity_m_s_max": 3.0,
+        "rec_water_loading_m3_h_m2_min": 4.0,
+        "rec_water_loading_m3_h_m2_max": 14.0,
+        "free_area_frac": 0.88,
+        "depth_m_default": 0.6,
+        "dp_k0_Pa_per_m_at_vr": 100.0,
+        "dp_vr_m_s": 2.2,
+    },
+    "Marley MX625 (crossflow film — high performance)": {
+        "vendor": "SPX Marley",
+        "geometry": "film",
+        "flow": "crossflow",
+        "rec_air_velocity_m_s_min": 1.8,
+        "rec_air_velocity_m_s_max": 3.2,
+        "rec_water_loading_m3_h_m2_min": 4.0,
+        "rec_water_loading_m3_h_m2_max": 15.0,
+        "free_area_frac": 0.87,
+        "depth_m_default": 0.6,
+        "dp_k0_Pa_per_m_at_vr": 105.0,
+        "dp_vr_m_s": 2.2,
+    },
+
+    # --- EVAPCO ---
+    "EVAPCO EVAPAK (counterflow film)": {
+        "vendor": "EVAPCO",
+        "geometry": "film",
+        "flow": "counterflow",
+        "rec_air_velocity_m_s_min": 2.0,
+        "rec_air_velocity_m_s_max": 3.5,
+        "rec_water_loading_m3_h_m2_min": 6.0,
+        "rec_water_loading_m3_h_m2_max": 20.0,
+        "free_area_frac": 0.92,
+        "depth_m_default": 0.9,
+        "dp_k0_Pa_per_m_at_vr": 150.0,
+        "dp_vr_m_s": 2.5,
+    },
+
+    # --- BAC ---
+    "BAC BACross (crossflow film, replacement packs)": {
+        "vendor": "BAC",
+        "geometry": "film",
+        "flow": "crossflow",
+        "rec_air_velocity_m_s_min": 1.8,
+        "rec_air_velocity_m_s_max": 3.0,
+        "rec_water_loading_m3_h_m2_min": 4.0,
+        "rec_water_loading_m3_h_m2_max": 14.0,
+        "free_area_frac": 0.88,
+        "depth_m_default": 0.6,
+        "dp_k0_Pa_per_m_at_vr": 100.0,
         "dp_vr_m_s": 2.2,
     },
 }
