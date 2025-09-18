@@ -61,8 +61,10 @@ def h_star_kJ_per_kg_da(Tw_C: float, P=P_ATM) -> float:
 # -------------------------------
 # Note: Default values are engineering placeholders. Replace with vendor data.
 DEFAULT_FILLS = {
-    # --- Brentwood AccuPac (film fills) ---
-    # NOTE: Ranges and dp anchors are placeholders. Replace with vendor data.
+    # =============================
+    # BRENTWOOD (AccuPac®) — conservative placeholders
+    # Sources: product pages & cut sheets (public brochures). Replace with vendor data for projects.
+    # =============================
     "Brentwood CF1900 (cross-fluted, counterflow)": {
         "vendor": "Brentwood",
         "geometry": "film",
@@ -75,6 +77,19 @@ DEFAULT_FILLS = {
         "depth_m_default": 0.9,
         "dp_k0_Pa_per_m_at_vr": 150.0,
         "dp_vr_m_s": 2.5,
+    },
+    "Brentwood CF1200 (cross-fluted, counterflow)": {
+        "vendor": "Brentwood",
+        "geometry": "film",
+        "flow": "counterflow",
+        "rec_air_velocity_m_s_min": 2.0,
+        "rec_air_velocity_m_s_max": 3.2,
+        "rec_water_loading_m3_h_m2_min": 6.0,
+        "rec_water_loading_m3_h_m2_max": 18.0,
+        "free_area_frac": 0.93,
+        "depth_m_default": 0.9,
+        "dp_k0_Pa_per_m_at_vr": 140.0,
+        "dp_vr_m_s": 2.4,
     },
     "Brentwood OF21MA (offset-fluted, counterflow — low-fouling)": {
         "vendor": "Brentwood",
@@ -89,7 +104,33 @@ DEFAULT_FILLS = {
         "dp_k0_Pa_per_m_at_vr": 140.0,
         "dp_vr_m_s": 2.4,
     },
-    "Brentwood XF75Pro (herringbone, crossflow)": {
+    "Brentwood VF19 PLUS (vertical-fluted, counterflow — anti-fouling)": {
+        "vendor": "Brentwood",
+        "geometry": "film",
+        "flow": "counterflow",
+        "rec_air_velocity_m_s_min": 2.0,
+        "rec_air_velocity_m_s_max": 3.0,
+        "rec_water_loading_m3_h_m2_min": 8.0,
+        "rec_water_loading_m3_h_m2_max": 25.0,
+        "free_area_frac": 0.95,
+        "depth_m_default": 1.2,
+        "dp_k0_Pa_per_m_at_vr": 80.0,
+        "dp_vr_m_s": 2.5,
+    },
+    "Brentwood XF75 (herringbone, crossflow)": {
+        "vendor": "Brentwood",
+        "geometry": "film",
+        "flow": "crossflow",
+        "rec_air_velocity_m_s_min": 1.8,
+        "rec_air_velocity_m_s_max": 3.0,
+        "rec_water_loading_m3_h_m2_min": 4.0,
+        "rec_water_loading_m3_h_m2_max": 14.0,
+        "free_area_frac": 0.88,
+        "depth_m_default": 0.6,
+        "dp_k0_Pa_per_m_at_vr": 100.0,
+        "dp_vr_m_s": 2.2,
+    },
+    "Brentwood XF75 Pro (herringbone, crossflow — enhanced)": {
         "vendor": "Brentwood",
         "geometry": "film",
         "flow": "crossflow",
@@ -103,7 +144,9 @@ DEFAULT_FILLS = {
         "dp_vr_m_s": 2.2,
     },
 
-    # --- SPX Marley ---
+    # =============================
+    # SPX MARLEY — crossflow MX family
+    # =============================
     "Marley MX75 (crossflow film)": {
         "vendor": "SPX Marley",
         "geometry": "film",
@@ -131,7 +174,9 @@ DEFAULT_FILLS = {
         "dp_vr_m_s": 2.2,
     },
 
-    # --- EVAPCO ---
+    # =============================
+    # EVAPCO — counterflow EVAPAK & crossflow Cross‑Pak (generic)
+    # =============================
     "EVAPCO EVAPAK (counterflow film)": {
         "vendor": "EVAPCO",
         "geometry": "film",
@@ -145,8 +190,23 @@ DEFAULT_FILLS = {
         "dp_k0_Pa_per_m_at_vr": 150.0,
         "dp_vr_m_s": 2.5,
     },
+    "EVAPCO Cross‑Pak (crossflow film)": {
+        "vendor": "EVAPCO",
+        "geometry": "film",
+        "flow": "crossflow",
+        "rec_air_velocity_m_s_min": 1.8,
+        "rec_air_velocity_m_s_max": 3.0,
+        "rec_water_loading_m3_h_m2_min": 4.0,
+        "rec_water_loading_m3_h_m2_max": 14.0,
+        "free_area_frac": 0.88,
+        "depth_m_default": 0.6,
+        "dp_k0_Pa_per_m_at_vr": 100.0,
+        "dp_vr_m_s": 2.2,
+    },
 
-    # --- BAC ---
+    # =============================
+    # BAC — crossflow replacement
+    # =============================
     "BAC BACross (crossflow film, replacement packs)": {
         "vendor": "BAC",
         "geometry": "film",
@@ -159,6 +219,49 @@ DEFAULT_FILLS = {
         "depth_m_default": 0.6,
         "dp_k0_Pa_per_m_at_vr": 100.0,
         "dp_vr_m_s": 2.2,
+    },
+    "BAC VersaCross (crossflow film, replacement kits)": {
+        "vendor": "BAC",
+        "geometry": "film",
+        "flow": "crossflow",
+        "rec_air_velocity_m_s_min": 1.8,
+        "rec_air_velocity_m_s_max": 3.0,
+        "rec_water_loading_m3_h_m2_min": 4.0,
+        "rec_water_loading_m3_h_m2_max": 14.0,
+        "free_area_frac": 0.88,
+        "depth_m_default": 0.6,
+        "dp_k0_Pa_per_m_at_vr": 100.0,
+        "dp_vr_m_s": 2.2,
+    },
+
+    # =============================
+    # SPLASH fills — generic placeholders (both arrangements)
+    # =============================
+    "Brentwood TurboSplash (modular splash, crossflow)": {
+        "vendor": "Brentwood",
+        "geometry": "splash",
+        "flow": "crossflow",
+        "rec_air_velocity_m_s_min": 2.0,
+        "rec_air_velocity_m_s_max": 3.5,
+        "rec_water_loading_m3_h_m2_min": 8.0,
+        "rec_water_loading_m3_h_m2_max": 28.0,
+        "free_area_frac": 0.95,
+        "depth_m_default": 0.6,
+        "dp_k0_Pa_per_m_at_vr": 60.0,
+        "dp_vr_m_s": 2.5,
+    },
+    "Brentwood HTP25 (modular splash, counterflow)": {
+        "vendor": "Brentwood",
+        "geometry": "splash",
+        "flow": "counterflow",
+        "rec_air_velocity_m_s_min": 2.0,
+        "rec_air_velocity_m_s_max": 3.5,
+        "rec_water_loading_m3_h_m2_min": 8.0,
+        "rec_water_loading_m3_h_m2_max": 28.0,
+        "free_area_frac": 0.95,
+        "depth_m_default": 0.9,
+        "dp_k0_Pa_per_m_at_vr": 60.0,
+        "dp_vr_m_s": 2.5,
     },
 }
 
@@ -225,6 +328,7 @@ with st.sidebar:
     st.header("Project & Options")
     proj_name = st.text_input("Project name", "Demo Tower")
     flow_type = st.radio("Tower flow arrangement", ["counterflow", "crossflow"], index=1)
+    filter_by_flow = st.checkbox("Filter fills by flow arrangement", value=True)
 
     # Editable fill library
     st.subheader("Fill library (JSON, editable)")
@@ -239,8 +343,11 @@ with st.sidebar:
         st.error(f"Fill JSON parse error: {e}")
         fills_db = DEFAULT_FILLS
 
-    # Filter fills by flow type
-    fill_names = [k for k, v in fills_db.items() if v.get("flow", "")==flow_type]
+    # Filter fills by flow type (optional)
+    if filter_by_flow:
+        fill_names = [k for k, v in fills_db.items() if v.get("flow", "") == flow_type]
+    else:
+        fill_names = list(fills_db.keys())
     if not fill_names:
         fill_names = list(fills_db.keys())
     fill_name = st.selectbox("Select fill model", fill_names)
